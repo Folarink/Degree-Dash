@@ -1,0 +1,27 @@
+nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #1a1a2e;
+}
+
+nav a {
+  color: white;
+  text-decoration: none;
+  margin-right: 1rem;
+}
+
+nav button {
+  color: white;
+  background: transparent;
+  border: 1px solid white;
+  padding: 0.4rem 1rem;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+nav span {
+  color: white;
+  margin-right: 1rem;
+}
