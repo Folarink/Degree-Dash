@@ -8,9 +8,10 @@
 # How to run Degree Dash locally #
 
 # Team members/ Contributors #
-**Khadijat Folarin**
-**Sohvat Saini**
-**Faiza Salami**
+**Khadijat Folarin,**
+**Sohvat Saini,**
+**Faiza Salami,**
 **Kikiola Ojuko**
+
 
 
