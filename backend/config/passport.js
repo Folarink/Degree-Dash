@@ -7,13 +7,13 @@ module.exports = function(passport) {
   
   // serialize user
   passport.serializeUser((user, done) => {
-    console.log('✅ Serializing user:', user.name)
+    console.log('Serializing user:', user.name)
     done(null, user)
   })
 
   // deserialize user
   passport.deserializeUser((user, done) => {
-    console.log('✅ Deserializing user:', user.name)
+    console.log('Deserializing user:', user.name)
     done(null, user)
   })
 
@@ -30,7 +30,7 @@ module.exports = function(passport) {
         },
         async function(accessToken, refreshToken, profile, done) {
           try {
-            console.log('✅ Microsoft profile received:', profile.displayName)
+            console.log('Microsoft profile received:', profile.displayName)
             const user = {
               microsoftId: profile.id,
               email: profile.emails?.[0]?.value || '',
@@ -40,14 +40,14 @@ module.exports = function(passport) {
             }
             return done(null, user)
           } catch (error) {
-            console.error('❌ Auth error:', error)
+            console.error('Auth error:', error)
             return done(error, null)
           }
         }
       )
     )
-    console.log('✅ Microsoft Strategy configured successfully')
+    console.log('Microsoft Strategy configured successfully')
   } catch (error) {
-    console.error('❌ Error configuring Microsoft Strategy:', error)
+    console.error('Error configuring Microsoft Strategy:', error)
   }
 }
