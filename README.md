@@ -6,12 +6,15 @@
 **Frontend - HTML, CSS, REACT, FIGMA** 
 **Backend - Express.js, SQLite** 
 # How to run Degree Dash locally #
+**In degree dash folder , type npm run dev to run the whole thing , to test backend cd backend and say npm run dev, to test frontend cd frontend and npm start**
+
 
 # Team members/ Contributors #
 **Khadijat Folarin,**
 **Sohvat Saini,**
 **Faiza Salami,**
 **Kikiola Ojuko**
+
 
 
 
