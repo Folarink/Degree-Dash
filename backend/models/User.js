@@ -1,37 +1,23 @@
 // backend/models/User.js
-// This model handles all user-related database operations
-// It provides methods for creating users, finding users, managing enrollments, and more
-
 const { runAsync, getAsync, allAsync } = require('../config/database');
 
 class User {
     /**
-     * Finds an existing user by their Microsoft ID or creates a new user if they don't exist.
-     * This is typically called during the OAuth login process with Microsoft.
-     * If the user already exists in our system, we simply update their last login time.
-     * If it's a new user, we create a new record with their Microsoft profile information.
-     * 
-     * @param {Object} profile - The Microsoft user profile object containing user information
-     * @returns {Object} The user object (either existing or newly created)
+     * Find or create user from Microsoft profile
      */
-    static async findOrCreateFromMicrosoft(profile) {
+    static async findOrCreateFromMicrosoft(profile, userType = 'current') {
         try {
-            // First, check if this user already exists in our database by their Microsoft ID
             let user = await this.findByMicrosoftId(profile.id);
             
-            // If user doesn't exist, we need to create a new user record
             if (!user) {
-                // Create new user with information from their Microsoft profile
-                // We capture their Microsoft ID, email, display name, and profile photo URL
                 user = await this.create({
                     microsoft_id: profile.id,
                     email: profile.emails[0].value,
                     name: profile.displayName,
-                    avatar_url: profile.photos?.[0]?.value
+                    avatar_url: profile.photos?.[0]?.value,
+                    user_type: userType
                 });
             } else {
-                // User exists, so we just update their last login timestamp
-                // This helps us track when they last accessed the system
                 await this.updateLastLogin(user.id);
             }
             
@@ -43,27 +29,33 @@ class User {
     }
 
     /**
-     * Creates a new user record in the database.
-     * This method inserts a new user with their Microsoft ID, email, name, and avatar URL.
-     * After insertion, it retrieves the complete user record to return.
-     * 
-     * @param {Object} userData - Object containing user data (microsoft_id, email, name, avatar_url)
-     * @returns {Object} The newly created user record
+     * Create a new user
      */
     static async create(userData) {
         try {
-            // Extract user data from the input object
-            const { microsoft_id, email, name, avatar_url } = userData;
+            const { 
+                microsoft_id, 
+                email, 
+                name, 
+                avatar_url, 
+                user_type = 'current',
+                graduation_year = null,
+                major = null,
+                enrollment_year = null
+            } = userData;
             
-            // SQL query to insert a new user into the users table
-            // We set the last_login to the current timestamp
             const sql = `
-                INSERT INTO users (microsoft_id, email, name, avatar_url, last_login)
-                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                INSERT INTO users (
+                    microsoft_id, email, name, avatar_url, 
+                    user_type, graduation_year, major, enrollment_year, last_login
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             `;
             
-            // Execute the insert query and get the resulting user
-            const result = await runAsync(sql, [microsoft_id, email, name, avatar_url]);
+            const result = await runAsync(sql, [
+                microsoft_id, email, name, avatar_url, 
+                user_type, graduation_year, major, enrollment_year
+            ]);
+            
             return await this.findById(result.id);
         } catch (error) {
             console.error('Error creating user:', error);
@@ -72,11 +64,7 @@ class User {
     }
 
     /**
-     * Finds a user by their unique Microsoft ID.
-     * This is useful for authentication and linking Microsoft accounts.
-     * 
-     * @param {string} microsoftId - The Microsoft user ID
-     * @returns {Object|null} The user object if found, null otherwise
+     * Find by Microsoft ID
      */
     static async findByMicrosoftId(microsoftId) {
         try {
@@ -89,11 +77,7 @@ class User {
     }
 
     /**
-     * Finds a user by their email address.
-     * This is useful for looking up users by their email.
-     * 
-     * @param {string} email - The user's email address
-     * @returns {Object|null} The user object if found, null otherwise
+     * Find by email
      */
     static async findByEmail(email) {
         try {
@@ -106,11 +90,7 @@ class User {
     }
 
     /**
-     * Finds a user by their internal database ID.
-     * This is the primary method for retrieving a user by their unique identifier.
-     * 
-     * @param {number} id - The user's internal database ID
-     * @returns {Object|null} The user object if found, null otherwise
+     * Find by ID
      */
     static async findById(id) {
         try {
@@ -123,10 +103,7 @@ class User {
     }
 
     /**
-     * Updates the last login timestamp for a user.
-     * This helps track user activity and when they last accessed the system.
-     * 
-     * @param {number} id - The user's internal database ID
+     * Update last login
      */
     static async updateLastLogin(id) {
         try {
@@ -139,168 +116,291 @@ class User {
     }
 
     /**
-     * Retrieves all courses that a user is enrolled in.
-     * The results include course details along with enrollment information
-     * such as when they enrolled and their current status.
-     * Results are sorted by enrollment date (most recent first).
-     * 
-     * @param {number} userId - The user's internal database ID
-     * @returns {Array} Array of enrolled course objects with enrollment details
+     * Get current students
      */
-    static async getEnrolledCourses(userId) {
+    static async getCurrentStudents() {
+        try {
+            const sql = 'SELECT * FROM users WHERE user_type = "current" ORDER BY name';
+            return await allAsync(sql);
+        } catch (error) {
+            console.error('Error getting current students:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get alumni with optional filters
+     */
+    static async getAlumni(filters = {}) {
+        try {
+            let sql = 'SELECT * FROM users WHERE user_type = "alumni"';
+            const params = [];
+
+            if (filters.graduation_year) {
+                sql += ' AND graduation_year = ?';
+                params.push(filters.graduation_year);
+            }
+
+            if (filters.major) {
+                sql += ' AND major = ?';
+                params.push(filters.major);
+            }
+
+            sql += ' ORDER BY graduation_year DESC, name';
+            return await allAsync(sql, params);
+        } catch (error) {
+            console.error('Error getting alumni:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get faculty
+     */
+    static async getFaculty() {
+        try {
+            const sql = 'SELECT * FROM users WHERE user_type = "faculty" ORDER BY name';
+            return await allAsync(sql);
+        } catch (error) {
+            console.error('Error getting faculty:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update user type (for graduation)
+     */
+    static async updateUserType(userId, userType, graduationYear = null) {
         try {
             const sql = `
-                SELECT c.*, e.enrolled_at, e.status, e.grade
-                FROM courses c
-                JOIN enrollments e ON c.id = e.course_id
-                WHERE e.user_id = ?
-                ORDER BY e.enrolled_at DESC
+                UPDATE users 
+                SET user_type = ?, 
+                    graduation_year = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
             `;
-            return await allAsync(sql, [userId]);
+            await runAsync(sql, [userType, graduationYear, userId]);
+            return await this.findById(userId);
         } catch (error) {
-            console.error('Error getting enrolled courses:', error);
+            console.error('Error updating user type:', error);
             throw error;
         }
     }
 
     /**
-     * Checks whether a user is currently enrolled in a specific course.
-     * 
-     * @param {number} userId - The user's internal database ID
-     * @param {number} courseId - The course's internal database ID
-     * @returns {boolean} True if enrolled, false otherwise
+     * Update alumni network
      */
-    static async isEnrolled(userId, courseId) {
+    static async updateAlumniNetwork(userId, alumniData) {
         try {
-            const sql = 'SELECT * FROM enrollments WHERE user_id = ? AND course_id = ?';
-            const enrollment = await getAsync(sql, [userId, courseId]);
-            return !!enrollment;
-        } catch (error) {
-            console.error('Error checking enrollment:', error);
-            throw error;
-        }
-    }
+            // First, ensure user is marked as alumni
+            await this.updateUserType(userId, 'alumni', alumniData.graduation_year);
 
-    /**
-     * Enrolls a user in a course if they are not already enrolled and there is capacity.
-     * This method uses a database transaction to ensure data integrity:
-     * - It first checks if the user is already enrolled
-     * - Then checks if the course has available capacity
-     * - Creates the enrollment record
-     * - Increments the enrolled count for the course
-     * 
-     * @param {number} userId - The user's internal database ID
-     * @param {number} courseId - The course's internal database ID
-     * @returns {Object} Result object with success status and message
-     */
-    static async enrollInCourse(userId, courseId) {
-        try {
-            // First, check if the user is already enrolled in this course
-            const enrolled = await this.isEnrolled(userId, courseId);
-            if (enrolled) {
-                return { success: false, message: 'Already enrolled' };
+            const {
+                current_employer,
+                job_title,
+                industry,
+                location,
+                linkedin_url,
+                mentorship_available = false
+            } = alumniData;
+
+            // Check if alumni network record exists
+            const existing = await getAsync(
+                'SELECT * FROM alumni_network WHERE user_id = ?',
+                [userId]
+            );
+
+            if (existing) {
+                // Update existing record
+                const sql = `
+                    UPDATE alumni_network 
+                    SET current_employer = ?,
+                        job_title = ?,
+                        industry = ?,
+                        location = ?,
+                        linkedin_url = ?,
+                        mentorship_available = ?,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = ?
+                `;
+                await runAsync(sql, [
+                    current_employer, job_title, industry, location, 
+                    linkedin_url, mentorship_available, userId
+                ]);
+            } else {
+                // Create new record
+                const sql = `
+                    INSERT INTO alumni_network (
+                        user_id, current_employer, job_title, industry,
+                        location, linkedin_url, mentorship_available
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                `;
+                await runAsync(sql, [
+                    userId, current_employer, job_title, industry,
+                    location, linkedin_url, mentorship_available
+                ]);
             }
 
-            // Check if the course has available capacity
-            // We need to ensure there's room before allowing enrollment
-            const course = await getAsync(
-                'SELECT capacity, enrolled FROM courses WHERE id = ?',
-                [courseId]
+            return await getAsync(
+                'SELECT * FROM alumni_network WHERE user_id = ?',
+                [userId]
             );
-            
-            // If the course is full, we cannot allow new enrollments
-            if (course.enrolled >= course.capacity) {
-                return { success: false, message: 'Course is full' };
-            }
-
-            // Begin a database transaction to ensure both operations succeed together
-            // This prevents data inconsistency if one operation fails
-            await runAsync('BEGIN TRANSACTION');
-            
-            // Insert the enrollment record
-            await runAsync(
-                'INSERT INTO enrollments (user_id, course_id) VALUES (?, ?)',
-                [userId, courseId]
-            );
-            
-            // Increment the enrolled count for the course
-            await runAsync(
-                'UPDATE courses SET enrolled = enrolled + 1 WHERE id = ?',
-                [courseId]
-            );
-            
-            // Commit the transaction to save all changes
-            await runAsync('COMMIT');
-            
-            return { success: true, message: 'Enrolled successfully' };
         } catch (error) {
-            // Rollback the transaction if any error occurs
-            await runAsync('ROLLBACK');
-            console.error('Error enrolling in course:', error);
+            console.error('Error updating alumni network:', error);
             throw error;
         }
     }
 
     /**
-     * Drops a user from a course if they are currently enrolled.
-     * This method uses a database transaction to ensure data integrity:
-     * - It first verifies the user is enrolled
-     * - Removes the enrollment record
-     * - Decrements the enrolled count for the course
-     * 
-     * @param {number} userId - The user's internal database ID
-     * @param {number} courseId - The course's internal database ID
-     * @returns {Object} Result object with success status and message
+     * Get alumni network profile
      */
-    static async dropCourse(userId, courseId) {
+    static async getAlumniNetwork(userId) {
         try {
-            // First, verify that the user is actually enrolled in this course
-            const enrolled = await this.isEnrolled(userId, courseId);
-            if (!enrolled) {
-                return { success: false, message: 'Not enrolled' };
-            }
-
-            // Begin a database transaction to ensure both operations succeed together
-            await runAsync('BEGIN TRANSACTION');
-            
-            // Remove the enrollment record from the enrollments table
-            await runAsync(
-                'DELETE FROM enrollments WHERE user_id = ? AND course_id = ?',
-                [userId, courseId]
-            );
-            
-            // Decrement the enrolled count for the course
-            // We use a condition to ensure the count doesn't go below zero
-            await runAsync(
-                'UPDATE courses SET enrolled = enrolled - 1 WHERE id = ? AND enrolled > 0',
-                [courseId]
-            );
-            
-            // Commit the transaction to save all changes
-            await runAsync('COMMIT');
-            
-            return { success: true, message: 'Dropped successfully' };
+            const sql = `
+                SELECT u.*, a.*
+                FROM users u
+                LEFT JOIN alumni_network a ON u.id = a.user_id
+                WHERE u.id = ? AND u.user_type = 'alumni'
+            `;
+            return await getAsync(sql, [userId]);
         } catch (error) {
-            // Rollback the transaction if any error occurs
-            await runAsync('ROLLBACK');
-            console.error('Error dropping course:', error);
+            console.error('Error getting alumni network:', error);
             throw error;
         }
     }
 
     /**
-     * Retrieves all users from the database.
-     * This is typically used by administrators to view all registered users.
-     * The results exclude sensitive information like Microsoft IDs and passwords.
-     * Results are sorted by creation date (newest first).
-     * 
-     * @returns {Array} Array of user objects with basic information
+     * Get mentors
      */
-    static async getAllUsers() {
+    static async getMentors() {
         try {
-            // Select only non-sensitive user information
-            const sql = 'SELECT id, email, name, avatar_url, created_at, last_login FROM users ORDER BY created_at DESC';
+            const sql = `
+                SELECT u.*, a.*
+                FROM users u
+                JOIN alumni_network a ON u.id = a.user_id
+                WHERE u.user_type = 'alumni' AND a.mentorship_available = 1
+                ORDER BY u.name
+            `;
             return await allAsync(sql);
+        } catch (error) {
+            console.error('Error getting mentors:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get user statistics
+     */
+    static async getUserStats() {
+        try {
+            const stats = await getAsync(`
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN user_type = 'current' THEN 1 ELSE 0 END) as current_count,
+                    SUM(CASE WHEN user_type = 'alumni' THEN 1 ELSE 0 END) as alumni_count,
+                    SUM(CASE WHEN user_type = 'faculty' THEN 1 ELSE 0 END) as faculty_count,
+                    SUM(CASE WHEN user_type = 'staff' THEN 1 ELSE 0 END) as staff_count
+                FROM users
+            `);
+            
+            return {
+                total: stats.total,
+                by_type: {
+                    current: { count: stats.current_count || 0 },
+                    alumni: { count: stats.alumni_count || 0 },
+                    faculty: { count: stats.faculty_count || 0 },
+                    staff: { count: stats.staff_count || 0 }
+                }
+            };
+        } catch (error) {
+            console.error('Error getting user stats:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get alumni statistics
+     */
+    static async getAlumniStats() {
+        try {
+            const stats = await getAsync(`
+                SELECT 
+                    COUNT(*) as total_alumni,
+                    COUNT(DISTINCT major) as distinct_majors,
+                    COUNT(DISTINCT graduation_year) as graduation_years,
+                    SUM(CASE WHEN mentorship_available = 1 THEN 1 ELSE 0 END) as mentors_available,
+                    GROUP_CONCAT(DISTINCT industry) as industries
+                FROM users u
+                LEFT JOIN alumni_network a ON u.id = a.user_id
+                WHERE u.user_type = 'alumni'
+            `);
+            
+            return stats || {
+                total_alumni: 0,
+                distinct_majors: 0,
+                graduation_years: 0,
+                mentors_available: 0,
+                industries: ''
+            };
+        } catch (error) {
+            console.error('Error getting alumni stats:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Search users
+     */
+    static async searchUsers(query) {
+        try {
+            const searchTerm = `%${query}%`;
+            const sql = `
+                SELECT id, email, name, avatar_url, user_type, graduation_year, major
+                FROM users
+                WHERE name LIKE ? 
+                   OR email LIKE ? 
+                   OR major LIKE ?
+                ORDER BY 
+                    CASE user_type
+                        WHEN 'current' THEN 1
+                        WHEN 'alumni' THEN 2
+                        WHEN 'faculty' THEN 3
+                        ELSE 4
+                    END,
+                    name
+            `;
+            return await allAsync(sql, [searchTerm, searchTerm, searchTerm]);
+        } catch (error) {
+            console.error('Error searching users:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get all users with filters
+     */
+    static async getAllUsers(filters = {}) {
+        try {
+            let sql = 'SELECT id, email, name, avatar_url, user_type, graduation_year, major, enrollment_year, created_at, last_login FROM users WHERE 1=1';
+            const params = [];
+
+            if (filters.user_type) {
+                sql += ' AND user_type = ?';
+                params.push(filters.user_type);
+            }
+
+            if (filters.major) {
+                sql += ' AND major = ?';
+                params.push(filters.major);
+            }
+
+            if (filters.graduation_year) {
+                sql += ' AND graduation_year = ?';
+                params.push(filters.graduation_year);
+            }
+
+            sql += ' ORDER BY created_at DESC';
+            return await allAsync(sql, params);
         } catch (error) {
             console.error('Error getting all users:', error);
             throw error;
