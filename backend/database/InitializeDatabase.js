@@ -5,15 +5,21 @@ const path = require('path');
 
 // Path to your new database
 const dbPath = path.join(__dirname, 'DegreeDashDatabase_new.db');
-console.log('Creating new database at:', dbPath);
+console.log('Using database at:', dbPath);
 
-// Complete schema for Microsoft Authentication with multiple professor support and user types
+// Create database directory if it doesn't exist
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+}
+
+// Complete schema with IF NOT EXISTS for all tables
 const schema = `
 -- Enable foreign key support
 PRAGMA foreign_keys = ON;
 
--- Users table with student/alumni/faculty support
-CREATE TABLE users (
+-- Users table with student/alumni support
+CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     microsoft_id TEXT UNIQUE NOT NULL,
     email TEXT UNIQUE NOT NULL,
@@ -28,8 +34,8 @@ CREATE TABLE users (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Courses table (removed instructor field since we have course_professors)
-CREATE TABLE courses (
+-- Courses table
+CREATE TABLE IF NOT EXISTS courses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     course_code TEXT UNIQUE NOT NULL,
     course_name TEXT NOT NULL,
@@ -47,7 +53,7 @@ CREATE TABLE courses (
 );
 
 -- Professors table
-CREATE TABLE professors (
+CREATE TABLE IF NOT EXISTS professors (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     department TEXT,
@@ -60,8 +66,8 @@ CREATE TABLE professors (
     UNIQUE(name, department)
 );
 
--- Junction table for courses and professors (many-to-many)
-CREATE TABLE course_professors (
+-- Junction table for courses and professors
+CREATE TABLE IF NOT EXISTS course_professors (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     course_id INTEGER NOT NULL,
     professor_id INTEGER NOT NULL,
@@ -72,8 +78,8 @@ CREATE TABLE course_professors (
     UNIQUE(course_id, professor_id)
 );
 
--- Enrollments table (tracks which students are in which courses)
-CREATE TABLE enrollments (
+-- Enrollments table
+CREATE TABLE IF NOT EXISTS enrollments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     course_id INTEGER NOT NULL,
@@ -87,8 +93,8 @@ CREATE TABLE enrollments (
     UNIQUE(user_id, course_id)
 );
 
--- Alumni network table (for alumni-specific features)
-CREATE TABLE alumni_network (
+-- Alumni network table
+CREATE TABLE IF NOT EXISTS alumni_network (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL UNIQUE,
     current_employer TEXT,
@@ -103,7 +109,7 @@ CREATE TABLE alumni_network (
 );
 
 -- Reviews table
-CREATE TABLE reviews (
+CREATE TABLE IF NOT EXISTS reviews (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     course_id INTEGER NOT NULL,
@@ -122,30 +128,30 @@ CREATE TABLE reviews (
     UNIQUE(user_id, course_id, professor_id, semester_taken, year_taken)
 );
 
--- Indexes for performance
-CREATE INDEX idx_users_microsoft ON users(microsoft_id);
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_type ON users(user_type);
-CREATE INDEX idx_users_graduation ON users(graduation_year);
-CREATE INDEX idx_users_major ON users(major);
-CREATE INDEX idx_courses_code ON courses(course_code);
-CREATE INDEX idx_courses_department ON courses(department);
-CREATE INDEX idx_courses_semester ON courses(semester, year);
-CREATE INDEX idx_course_professors_course ON course_professors(course_id);
-CREATE INDEX idx_course_professors_professor ON course_professors(professor_id);
-CREATE INDEX idx_enrollments_user ON enrollments(user_id);
-CREATE INDEX idx_enrollments_course ON enrollments(course_id);
-CREATE INDEX idx_enrollments_status ON enrollments(status);
-CREATE INDEX idx_reviews_course ON reviews(course_id);
-CREATE INDEX idx_reviews_professor ON reviews(professor_id);
-CREATE INDEX idx_reviews_user ON reviews(user_id);
-CREATE INDEX idx_professors_name ON professors(name);
-CREATE INDEX idx_professors_department ON professors(department);
-CREATE INDEX idx_alumni_industry ON alumni_network(industry);
-CREATE INDEX idx_alumni_mentorship ON alumni_network(mentorship_available);
+-- Indexes (CREATE INDEX IF NOT EXISTS)
+CREATE INDEX IF NOT EXISTS idx_users_microsoft ON users(microsoft_id);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_type ON users(user_type);
+CREATE INDEX IF NOT EXISTS idx_users_graduation ON users(graduation_year);
+CREATE INDEX IF NOT EXISTS idx_users_major ON users(major);
+CREATE INDEX IF NOT EXISTS idx_courses_code ON courses(course_code);
+CREATE INDEX IF NOT EXISTS idx_courses_department ON courses(department);
+CREATE INDEX IF NOT EXISTS idx_courses_semester ON courses(semester, year);
+CREATE INDEX IF NOT EXISTS idx_course_professors_course ON course_professors(course_id);
+CREATE INDEX IF NOT EXISTS idx_course_professors_professor ON course_professors(professor_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_user ON enrollments(user_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_course ON enrollments(course_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_status ON enrollments(status);
+CREATE INDEX IF NOT EXISTS idx_reviews_course ON reviews(course_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_professor ON reviews(professor_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_professors_name ON professors(name);
+CREATE INDEX IF NOT EXISTS idx_professors_department ON professors(department);
+CREATE INDEX IF NOT EXISTS idx_alumni_industry ON alumni_network(industry);
+CREATE INDEX IF NOT EXISTS idx_alumni_mentorship ON alumni_network(mentorship_available);
 
--- View for course statistics (updated to show multiple professors)
-CREATE VIEW course_stats AS
+-- Views (CREATE VIEW IF NOT EXISTS)
+CREATE VIEW IF NOT EXISTS course_stats AS
 SELECT 
     c.id,
     c.course_code,
@@ -170,8 +176,7 @@ LEFT JOIN professors p ON cp.professor_id = p.id
 LEFT JOIN reviews r ON c.id = r.course_id
 GROUP BY c.id;
 
--- View for course details with professor list
-CREATE VIEW course_details AS
+CREATE VIEW IF NOT EXISTS course_details AS
 SELECT 
     c.*,
     GROUP_CONCAT(DISTINCT p.name, ', ') as instructors,
@@ -181,8 +186,7 @@ LEFT JOIN course_professors cp ON c.id = cp.course_id
 LEFT JOIN professors p ON cp.professor_id = p.id
 GROUP BY c.id;
 
--- View for user enrollment details
-CREATE VIEW user_enrollments AS
+CREATE VIEW IF NOT EXISTS user_enrollments AS
 SELECT 
     u.id as user_id,
     u.email,
@@ -201,8 +205,7 @@ FROM users u
 JOIN enrollments e ON u.id = e.user_id
 JOIN courses c ON e.course_id = c.id;
 
--- View for alumni directory
-CREATE VIEW alumni_directory AS
+CREATE VIEW IF NOT EXISTS alumni_directory AS
 SELECT 
     u.id,
     u.name,
@@ -219,8 +222,7 @@ LEFT JOIN alumni_network a ON u.id = a.user_id
 WHERE u.user_type = 'alumni'
 ORDER BY u.graduation_year DESC, u.name;
 
--- View for user statistics by type
-CREATE VIEW user_stats AS
+CREATE VIEW IF NOT EXISTS user_stats AS
 SELECT 
     user_type,
     COUNT(*) as user_count,
@@ -232,8 +234,7 @@ FROM users
 WHERE user_type IS NOT NULL
 GROUP BY user_type;
 
--- View for alumni statistics
-CREATE VIEW alumni_stats AS
+CREATE VIEW IF NOT EXISTS alumni_stats AS
 SELECT 
     COUNT(*) as total_alumni,
     COUNT(DISTINCT major) as distinct_majors,
@@ -246,90 +247,25 @@ LEFT JOIN alumni_network a ON u.id = a.user_id
 WHERE u.user_type = 'alumni';
 `;
 
-// Delete old database if it exists
-try {
-    if (fs.existsSync(dbPath)) {
-        console.log('Old database found, removing it...');
-        fs.unlinkSync(dbPath);
-        console.log('Old database removed');
-    }
-} catch (err) {
-    console.log('Could not remove old database:', err.message);
-}
+// DON'T delete the old database - keep existing data
+console.log('Initializing database schema (preserving existing data)...');
 
-// Create new database and run schema
+// Create new database connection (will open existing file if it exists)
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
-        console.error('Error creating database:', err.message);
+        console.error('Error connecting to database:', err.message);
         return;
     }
-    console.log(' New database file created successfully');
+    console.log(' Connected to database successfully');
     
     // Execute schema
     db.exec(schema, (err) => {
         if (err) {
             console.error(' Error creating schema:', err);
         } else {
-            console.log(' Database schema created successfully!');
-            console.log('\n Tables created:');
-            console.log('  - users (with user_type, graduation_year, major)');
-            console.log('  - courses');
-            console.log('  - professors');
-            console.log('  - course_professors (enables multiple professors per course)');
-            console.log('  - enrollments');
-            console.log('  - alumni_network (for alumni-specific data)');
-            console.log('  - reviews');
-            console.log('\n Views created:');
-            console.log('  - course_stats (shows all professors)');
-            console.log('  - course_details');
-            console.log('  - user_enrollments');
-            console.log('  - alumni_directory');
-            console.log('  - user_stats');
-            console.log('  - alumni_stats');
+            console.log(' Database schema verified/created successfully!');
         }
-    
-        // Verify tables were created
-        db.all("SELECT name FROM sqlite_master WHERE type='table'", (err, tables) => {
-            if (err) {
-                console.error(' Error verifying tables:', err);
-            } else {
-                console.log('\n Verified tables in database:');
-                tables.forEach(table => {
-                    console.log('   - ' + table.name);
-                });
-            }
-            
-            // Show counts of indexes
-            db.all("SELECT name FROM sqlite_master WHERE type='index'", (err, indexes) => {
-                if (err) {
-                    console.error('Error verifying indexes:', err);
-                } else {
-                    console.log(`\n Created ${indexes.length} indexes for performance`);
-                }
-                
-                // Show counts of views
-                db.all("SELECT name FROM sqlite_master WHERE type='view'", (err, views) => {
-                    if (err) {
-                        console.error('Error verifying views:', err);
-                    } else {
-                        console.log(` Created ${views.length} views:`);
-                        views.forEach(view => {
-                            console.log('   - ' + view.name);
-                        });
-                    }
-                    
-                    // Close database
-                    db.close((err) => {
-                        if (err) {
-                            console.error(' Error closing database:', err);
-                        } else {
-                            console.log('\n Database initialization complete!');
-                            console.log(' Next step: Run node seed-new.js to add sample data');
-                            console.log('   This will create users of different types (current, alumni, faculty)');
-                        }
-                    });
-                });
-            });
-        });
+        
+        db.close();
     });
 });
