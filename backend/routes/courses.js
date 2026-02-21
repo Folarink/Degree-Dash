@@ -6,7 +6,7 @@ const db = require('../database/db');
 router.get('/', (req, res) => {
   const { search, department } = req.query;
   
-  let query = `SELECT * FROM course_stats WHERE 1=1`;
+  let query = `SELECT * FROM courses WHERE 1=1`;
   const params = [];
 
   if (search) {
@@ -28,7 +28,7 @@ router.get('/', (req, res) => {
 router.get('/:id', (req, res) => {
   const { id } = req.params;
 
-  db.get(`SELECT * FROM course_stats WHERE id = ?`, [id], (err, course) => {
+  db.get(`SELECT * FROM courses WHERE id = ?`, [id], (err, course) => {
     if (err) return res.status(500).json({ message: err.message });
     if (!course) return res.status(404).json({ message: 'Course not found' });
 
