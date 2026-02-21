@@ -56,7 +56,8 @@ require('./config/passport')(passport)
 
 // import routes
 app.use('/auth', require('./routes/auth'))
-// app.use('/api/courses', require('./routes/courses'))
+app.use('/api/courses', require('./routes/courses'))
+// app.use('/api/professors', require('./routes/professors'))
 
 // error handling middleware
 app.use((err, req, res, next) => {

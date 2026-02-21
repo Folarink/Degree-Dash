@@ -6,17 +6,24 @@
   background: white;
   border-bottom: 1px solid #e2e8f0;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 99;
 }
 
 .navbar__brand {
+  text-decoration: none;
+  color: inherit;
   display: flex;
   align-items: center;
   gap: 1rem;
+  cursor: pointer;
 }
 
 .navbar__brand h3 {
   margin: 0;
   font-size: 1.1rem;
+  color: #1e293b;
 }
 
 .navbar__brand p {
@@ -37,13 +44,16 @@
 }
 
 .navbar__links a {
-  color: #ca1d1d;
+  color: #4F46E5;
   text-decoration: none;
   font-weight: 500;
+  font-size: 0.95rem;
+  transition: color 0.2s;
 }
 
 .navbar__links a:hover {
-  text-decoration: underline;
+  color: #4338ca;
+  text-decoration: none;
 }
 
 .profile-container {
@@ -57,6 +67,7 @@
   cursor: pointer;
   object-fit: cover;
   border: 2px solid #e2e8f0;
+  transition: border-color 0.2s;
 }
 
 .profile-pic:hover {
@@ -103,13 +114,4 @@
 .dropdown-menu button:hover {
   background: #f8fafc;
   color: #4F46E5;
-}
-
-.navbar__brand {
-  text-decoration: none;
-  color: inherit;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  cursor: pointer;
 }
