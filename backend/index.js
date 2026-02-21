@@ -1,3 +1,4 @@
+//index.js
 //import required packages
 const express = require('express')
 const cors = require('cors')
@@ -10,7 +11,7 @@ dotenv.config()
 
 // create Express app
 const app = express()
-const PORT = process.env.PORT || 5000
+const PORT = process.env.PORT || 5050
 
 // set up cors
 app.use(cors({
@@ -41,13 +42,20 @@ app.use(passport.session())
 // import Passport config
 require('./config/passport')(passport)
 
-// test route
-app.get('/', (req, res) => {
-  res.json({ message: 'Degree Dash API is running!' })
-})
+// Request logging middleware 
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`)
+    next()
+  })
+  
+  // test route
+  app.get('/', (req, res) => {
+    res.json({ message: 'Degree Dash API is running!' })
+  })
+  
 
-// // import routes
-// app.use('/auth', require('./routes/auth'))
+// import routes
+app.use('/auth', require('./routes/auth'))
 // app.use('/api/courses', require('./routes/courses'))
 
 // error handling middleware

@@ -6,7 +6,7 @@ function Signup() {
   const [overlay, setOverlay] = useState(null); // 'signup', 'login', or null
 
   const handleMicrosoftAuth = () => {
-    window.location.href = 'http://localhost:5000/api/auth/microsoft';
+    window.location.href = 'http://localhost:5050/auth/microsoft';
   };
 
   return (
@@ -18,7 +18,6 @@ function Signup() {
         <p>TAGLINE 1.</p>
         <p>TAGLINE 2.</p>
         <div className="home__buttons">
-          <button className="btn-primary" onClick={() => setOverlay('signup')}>Sign up</button>
           <button className="btn-secondary" onClick={() => setOverlay('login')}>Log in</button>
         </div>
         <small><a href="/about">About</a> · <a href="/contact">Contact</a></small>
