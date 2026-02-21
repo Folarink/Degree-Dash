@@ -52,25 +52,25 @@ export const courses = [
 export const professors = [
   {
     _id: '1',
-    name: 'Dr. John Smith',
+    name: 'Dr. James Yong',
     department: 'Computer Science',
-    bio: 'Specializes in programming languages and compilers.',
+    bio: 'Specializes in HCI.',
   },
   {
     _id: '2',
-    name: 'Dr. Sarah Lee',
+    name: 'Dr. Tristan Miller',
     department: 'Computer Science',
-    bio: 'Research interests in operating systems and distributed computing.',
+    bio: 'Research interests in computational linguistics.',
   },
   {
     _id: '3',
-    name: 'Dr. James Patel',
+    name: 'Dr. Heather Matheson',
     department: 'Computer Science',
-    bio: 'Focuses on algorithms and computational complexity.',
+    bio: 'Focuses on object oritentation and databases.',
   },
   {
     _id: '4',
-    name: 'Dr. Emily Brown',
+    name: 'Dr. Varvara Sharjsjsjos',
     department: 'Mathematics',
     bio: 'Specializes in calculus and real analysis.',
   },
