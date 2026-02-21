@@ -15,9 +15,12 @@ const PORT = process.env.PORT || 5050
 
 // set up cors
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000', //react app
-  credentials: true // Allow cookies to be sent
-}))
+    origin: 'http://localhost:3000',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['set-cookie']
+  }))
 
 // body parsing middleware
 app.use(express.json()) // Parse JSON bodies
@@ -31,7 +34,8 @@ app.use(session({
   cookie: {
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production' // HTTPS only in production
+    secure: false, // IMPORTANT: Must be false for localhost!
+    sameSite: 'lax' // HTTPS only in production
   }
 }))
 

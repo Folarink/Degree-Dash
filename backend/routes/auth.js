@@ -17,7 +17,7 @@ router.get('/microsoft', (req, res, next) => {
 // @route   GET /auth/microsoft/callback
 // @desc    Handle Microsoft OAuth callback
 router.get('/microsoft/callback',
-  passport.authenticate('microsoft', { failureRedirect: `${process.env.FRONTEND_URL}` }),
+  passport.authenticate('microsoft', { failureRedirect: `${process.env.FRONTEND_URL}`  }),
   (req, res) => {
    // console.log('Login was successful, User:', req.user.name)
     // Redirect to frontend dashboard
